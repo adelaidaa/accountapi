@@ -1,6 +1,17 @@
 version: '3'
 
 services:
+  springboot-accountapi:
+    image: springboot-accountapi:1
+    depends_on:
+      - accountapi
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    volumes:
+      - /data/springboot-accountapi
+    ports:
+      - "8081:8081"
   accountapi:
     image: form3tech/interview-accountapi:v1.0.0-4-g63cf8434
     restart: on-failure
