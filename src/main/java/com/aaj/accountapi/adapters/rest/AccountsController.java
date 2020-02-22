@@ -6,6 +6,8 @@ import com.aaj.accountapi.core.ports.accounts.AccountsClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -13,6 +15,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import javax.validation.Valid;
 import java.net.URI;
+import java.util.UUID;
 
 @RestController
 public class AccountsController {
@@ -33,5 +36,12 @@ public class AccountsController {
                 .toUri();
 
         return ResponseEntity.created(location).contentType(MediaType.APPLICATION_JSON).body(accountDto);
+    }
+
+    @GetMapping(path = "/accounts/{accountId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Object> getAccountById(@PathVariable(value="accountId") UUID accountId) {
+        AccountDto accountDto = accountsClient.findById(accountId);
+
+        return ResponseEntity.ok(accountDto);
     }
 }

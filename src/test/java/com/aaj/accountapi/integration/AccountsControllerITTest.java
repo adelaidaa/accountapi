@@ -1,10 +1,9 @@
 package com.aaj.accountapi.integration;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
-import com.github.tomakehurst.wiremock.client.WireMock;
 import io.restassured.http.ContentType;
-import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -14,11 +13,12 @@ import org.springframework.test.context.ContextConfiguration;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.UUID;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
-import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
 
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -31,6 +31,13 @@ public class AccountsControllerITTest {
     @LocalServerPort
     private Integer port;
 
+    private AccountThirdPartyAPIStubs accountThirdPartyAPIStubs;
+
+    @BeforeEach
+    public void setup() {
+        accountThirdPartyAPIStubs = new AccountThirdPartyAPIStubs(wireMockServer);
+    }
+
     @AfterEach
     public void afterEach() {
         this.wireMockServer.resetAll();
@@ -39,22 +46,22 @@ public class AccountsControllerITTest {
     @Test
     public void testPostAccountReturnOk() throws Exception {
         String accountRequest = new String(Files.readAllBytes(Paths.get(getClass().getClassLoader().getResource("stubs/accounts/accountRequest.json").toURI())));
-        stubForPostAccount();
+        accountThirdPartyAPIStubs.stubForPostAccount();
 
         given()
                 .contentType(ContentType.JSON)
                 .body(accountRequest)
                 .when()
-                    .post("http://localhost:" + port + "/accounts")
+                .post("http://localhost:" + port + "/accounts")
                 .then()
                     .contentType(MediaType.APPLICATION_JSON_VALUE)
-                    .body("id", Matchers.equalTo("ae27e265-9605-4b4b-a0e5-3003ea9cc4dc"))
-                    .body("country", Matchers.equalTo("GB"))
-                    .body("currency", Matchers.equalTo("GBP"))
-                    .body("accountNumber", Matchers.equalTo("41426819"))
-                    .body("bic", Matchers.equalTo("NWBKGB22"))
-                    .body("iban", Matchers.equalTo("GB11NWBK40030041426819"))
-                    .body("accountName", Matchers.equalTo("Samantha Holder"))
+                    .body("id", equalTo("ae27e265-9605-4b4b-a0e5-3003ea9cc4dc"))
+                    .body("country", equalTo("GB"))
+                    .body("currency", equalTo("GBP"))
+                    .body("accountNumber", equalTo("41426819"))
+                    .body("bic", equalTo("NWBKGB22"))
+                    .body("iban", equalTo("GB11NWBK40030041426819"))
+                    .body("accountName", equalTo("Samantha Holder"))
                 .assertThat()
                     .statusCode(201);
 
@@ -63,39 +70,57 @@ public class AccountsControllerITTest {
     @Test
     public void testPostAccountThirdPartyReturnException() throws Exception {
         String accountRequest = new String(Files.readAllBytes(Paths.get(getClass().getClassLoader().getResource("stubs/accounts/accountRequest.json").toURI())));
-        stubForPostAccountException();
+        accountThirdPartyAPIStubs.stubForPostAccountException();
 
         given()
                 .contentType(ContentType.JSON)
                 .body(accountRequest)
                 .when()
-                    .post("http://localhost:" + port + "/accounts")
+                .post("http://localhost:" + port + "/accounts")
                 .then()
-                    .body("message", Matchers.equalTo("Third Party Exception"))
-                    .body("details", Matchers.hasSize(1))
-                    .body("details", Matchers.hasItem("400 Bad Request: [no body]"))
+                    .body("message", equalTo("Third Party Exception"))
+                    .body("details", hasSize(1))
+                    .body("details", hasItem("400 Bad Request: [no body]"))
                 .assertThat()
                     .statusCode(400);
     }
 
-    private void stubForPostAccount() throws Exception {
-        String accountRequest = new String(Files.readAllBytes(Paths.get(getClass().getClassLoader().getResource("stubs/accounts/form3AccountRequest.json").toURI())));
-        String accountResponse = new String(Files.readAllBytes(Paths.get(getClass().getClassLoader().getResource("stubs/accounts/form3AccountResponse.json").toURI())));
+    @Test
+    public void testGetAccountReturnOk() throws Exception {
+        String accountId = "ae27e265-9605-4b4b-a0e5-3003ea9cc4dc";
+        accountThirdPartyAPIStubs.stubForGetAccount(UUID.fromString(accountId));
 
-        this.wireMockServer.stubFor(
-                WireMock.post("/v1/organisation/accounts")
-                        .withHeader("Content-Type", equalTo("application/json"))
-                        .withRequestBody(equalToJson(accountRequest))
-                        .willReturn(aResponse()
-                                .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
-                                .withBody(accountResponse)));
+        given()
+                .when()
+                .get("http://localhost:" + port + "/accounts/" + accountId)
+                .then()
+                    .contentType(MediaType.APPLICATION_JSON_VALUE)
+                    .body("id", equalTo(accountId))
+                    .body("country", equalTo("GB"))
+                    .body("currency", equalTo("GBP"))
+                    .body("accountNumber", equalTo("41426819"))
+                    .body("bic", equalTo("NWBKGB22"))
+                    .body("iban", equalTo("GB11NWBK40030041426819"))
+                    .body("accountName", equalTo("Samantha Holder"))
+                .assertThat()
+                    .statusCode(200);
+
     }
 
-    private void stubForPostAccountException() throws Exception {
-        this.wireMockServer.stubFor(
-                WireMock.post("/v1/organisation/accounts")
-                        .willReturn(aResponse()
-                                .withStatus(400)));
-    }
 
+    @Test
+    public void testGetAccountForNonExistingAccountThirdPartyReturnException() throws Exception {
+        String accountId = "af27e265-9605-4b4b-a0e5-3003ea9cc4dc";
+        accountThirdPartyAPIStubs.stubForGetAccountException(UUID.fromString(accountId));
+
+        given()
+                .when()
+                .get("http://localhost:" + port + "/accounts/" + accountId)
+                .then()
+                    .body("message", equalTo("Third Party Exception"))
+                    .body("details", hasSize(1))
+                    .body("details", hasItem("404 Not Found: [{\"error_message\":\"record af27e265-9605-4b4e-a0f5-3003ea9cc4dc does not exist\"}]"))
+                .assertThat()
+                    .statusCode(404);
+    }
 }

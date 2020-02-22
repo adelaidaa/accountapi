@@ -20,6 +20,7 @@ import java.util.UUID;
 @Service
 public class Form3AccountsClient implements AccountsClient {
 
+    public static final String V_1_ORGANISATION_ACCOUNTS = "/v1/organisation/accounts";
     private final RestTemplate restTemplate;
     private final String form3Uri;
 
@@ -33,7 +34,16 @@ public class Form3AccountsClient implements AccountsClient {
 
     @Override
     public AccountDto findById(UUID id) throws ResourceNotFoundException {
-        return null;
+        try {
+            ResponseEntity<Form3AccountDto> response = restTemplate.getForEntity(form3Uri + V_1_ORGANISATION_ACCOUNTS + "/" + id, Form3AccountDto.class);
+            return toDto(response.getBody().getData());
+
+        } catch (HttpClientErrorException e) {
+            throw new ThirdPartyHttpException(e.getStatusCode(), e.getMessage());
+        }
+        catch (Exception e){
+            throw e;
+        }
     }
 
     @Override
@@ -43,7 +53,7 @@ public class Form3AccountsClient implements AccountsClient {
         HttpEntity<Form3AccountDto> request = new HttpEntity<>(getForm3Account(accountRequest), headers);
 
         try {
-            ResponseEntity<Form3AccountDto> response = restTemplate.postForEntity(form3Uri + "/v1/organisation/accounts",
+            ResponseEntity<Form3AccountDto> response = restTemplate.postForEntity(form3Uri + V_1_ORGANISATION_ACCOUNTS,
                     request, Form3AccountDto.class);
             return toDto(response.getBody().getData());
 

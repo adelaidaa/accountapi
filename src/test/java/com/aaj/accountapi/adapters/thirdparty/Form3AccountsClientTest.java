@@ -136,4 +136,40 @@ class Form3AccountsClientTest {
 
         assertThrows(RuntimeException.class, () -> client.accountReceived(accountRequest));
     }
+
+    @Test
+    void given__accountId__should_get_existingAccount() {
+        ResponseEntity<Form3AccountDto> responseEntity = new ResponseEntity<>(form3AccountDto, HttpStatus.OK);
+
+        given(restTemplate.getForEntity(eq("localhost:8080/v1/organisation/accounts/" + ID),
+                eq(Form3AccountDto.class))).willReturn(responseEntity);
+
+        AccountDto accountDto = client.findById(ID);
+
+        AccountDto expectedAccount = AccountDto.builder().id(ID)
+                .country(COUNTRY.toString())
+                .currency(BASE_CURRENCY.toString())
+                .accountNumber(ACCOUNT_NUMBER)
+                .accountName(BANK_ACCOUNT_NAME)
+                .iban(IBAN)
+                .bic(BIC)
+                .build();
+        assertThat(accountDto).isEqualTo(expectedAccount);
+    }
+
+    @Test
+    void given__findAccountId__and_3rdparty_throwsHttpClientErrorException__should_throw_thirdPartyHttpException() {
+        given(restTemplate.getForEntity(eq("localhost:8080/v1/organisation/accounts/" + ID),
+                eq(Form3AccountDto.class))).willThrow(new HttpClientErrorException(HttpStatus.NOT_FOUND));
+
+        assertThrows(ThirdPartyHttpException.class, () -> client.findById(ID));
+    }
+
+    @Test
+    void given__findAccountId__and_3rdparty_throwsException__should_re_throw_exception() {
+        given(restTemplate.getForEntity(eq("localhost:8080/v1/organisation/accounts/" + ID),
+                eq(Form3AccountDto.class))).willThrow(new HttpClientErrorException(HttpStatus.NOT_FOUND));
+
+        assertThrows(RuntimeException.class, () -> client.findById(ID));
+    }
 }
