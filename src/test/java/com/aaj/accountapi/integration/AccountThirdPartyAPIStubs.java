@@ -42,6 +42,16 @@ public class AccountThirdPartyAPIStubs {
                                 .withBody(accountResponse)));
     }
 
+    public void stubForGetAccounts(String pageNumber, String pageSize) throws Exception {
+        String accountsResponse = new String(Files.readAllBytes(Paths.get(getClass().getClassLoader().getResource("stubs/accounts/form3AccountsResponse.json").toURI())));
+
+        this.wireMockServer.stubFor(
+                WireMock.get("/v1/organisation/accounts?page%5Bnumber%5D="+pageNumber+"&page%5Bsize%5D="+pageSize)
+                        .willReturn(aResponse()
+                                .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                                .withBody(accountsResponse)));
+    }
+
     public void stubForPostAccountException() throws Exception {
         this.wireMockServer.stubFor(
                 WireMock.post("/v1/organisation/accounts")

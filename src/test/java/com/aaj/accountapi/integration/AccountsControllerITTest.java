@@ -1,5 +1,7 @@
 package com.aaj.accountapi.integration;
 
+import com.aaj.accountapi.core.ports.accounts.AccountDto;
+import com.aaj.accountapi.core.ports.accounts.Country;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.AfterEach;
@@ -13,6 +15,8 @@ import org.springframework.test.context.ContextConfiguration;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Currency;
+import java.util.Locale;
 import java.util.UUID;
 
 import static io.restassured.RestAssured.given;
@@ -24,7 +28,6 @@ import static org.hamcrest.Matchers.hasSize;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ContextConfiguration(initializers = {WireMockInitializer.class})
 public class AccountsControllerITTest {
-
     @Autowired
     private WireMockServer wireMockServer;
 
@@ -107,7 +110,6 @@ public class AccountsControllerITTest {
 
     }
 
-
     @Test
     public void testGetAccountForNonExistingAccountThirdPartyReturnException() throws Exception {
         String accountId = "af27e265-9605-4b4b-a0e5-3003ea9cc4dc";
@@ -123,4 +125,32 @@ public class AccountsControllerITTest {
                 .assertThat()
                     .statusCode(404);
     }
+
+    @Test
+    public void testGetAccountsReturnOk() throws Exception {
+        accountThirdPartyAPIStubs.stubForGetAccounts("1", "1");
+
+        given()
+                .when()
+                .get("http://localhost:" + port + "/accounts?pageNumber=1&pageSize=1")
+                .then()
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                    .body("accounts", hasSize(1))
+                    .body("accounts[0].id", equalTo("ae27e265-9605-4b4b-a0e5-3003ea9cc4dc"))
+                    .body("accounts[0].country", equalTo("GB"))
+                    .body("accounts[0].currency", equalTo("GBP"))
+                    .body("accounts[0].accountNumber", equalTo("41426819" ))
+                    .body("accounts[0].bic", equalTo("NWBKGB22" ))
+                    .body("accounts[0].iban", equalTo("GB11NWBK40030041426819" ))
+                    .body("accounts[0].accountName", equalTo("Samantha Holder" ))
+                    .body("previousPage", equalTo( "/accounts?pageNumber=0&pageSize=1"))
+                    .body("nextPage", equalTo( "/accounts?pageNumber=2&pageSize=1"))
+                    .body("firstPage", equalTo( "/accounts?pageNumber=first&pageSize=1"))
+                    .body("lastPage", equalTo( "/accounts?pageNumber=last&pageSize=1"))
+                    .body("selfPage", equalTo( "/accounts?pageNumber=1&pageSize=1"))
+                .assertThat()
+                    .statusCode(200);
+
+    }
+
 }

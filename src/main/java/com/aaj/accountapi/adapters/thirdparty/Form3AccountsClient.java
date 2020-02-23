@@ -5,6 +5,7 @@ import com.aaj.accountapi.core.ports.accounts.AccountAttributes;
 import com.aaj.accountapi.core.ports.accounts.AccountDto;
 import com.aaj.accountapi.core.ports.accounts.AccountRequest;
 import com.aaj.accountapi.core.ports.accounts.AccountsClient;
+import com.aaj.accountapi.core.ports.accounts.AccountsPage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -14,34 +15,70 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponents;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class Form3AccountsClient implements AccountsClient {
 
-    public static final String V_1_ORGANISATION_ACCOUNTS = "/v1/organisation/accounts";
+    private static final String V_1_ORGANISATION_ACCOUNTS = "/v1/organisation/accounts";
     private final RestTemplate restTemplate;
-    private final String form3Uri;
+    private final UriComponentsBuilder uriBuilder;
 
     @Autowired
     public Form3AccountsClient(RestTemplate restTemplate,
                                @Value("${form3.base.url}") String form3BaseUrl,
                                @Value("${form3.base.port}") String form3BasePort) {
         this.restTemplate = restTemplate;
-        this.form3Uri = form3BaseUrl + ":" + form3BasePort;
+        this.uriBuilder = UriComponentsBuilder.newInstance()
+                .scheme("http")
+                .host(form3BaseUrl)
+                .port(form3BasePort)
+                .path(V_1_ORGANISATION_ACCOUNTS);
     }
 
     @Override
     public AccountDto findById(UUID id) throws ResourceNotFoundException {
         try {
-            ResponseEntity<Form3AccountDto> response = restTemplate.getForEntity(form3Uri + V_1_ORGANISATION_ACCOUNTS + "/" + id, Form3AccountDto.class);
+            UriComponents uriComponents = uriBuilder.path("/{accountId}").buildAndExpand(id);
+            ResponseEntity<Form3AccountDto> response = restTemplate.getForEntity(uriComponents.toUri(), Form3AccountDto.class);
             return toDto(response.getBody().getData());
 
         } catch (HttpClientErrorException e) {
             throw new ThirdPartyHttpException(e.getStatusCode(), e.getMessage());
+        } catch (Exception e) {
+            throw e;
         }
-        catch (Exception e){
+    }
+
+    @Override
+    public AccountsPage findAccounts(int pageNumber, int pageSize) {
+        try {
+            uriBuilder
+                    .queryParam("page[number]", String.valueOf(pageNumber))
+                    .queryParam("page[size]", String.valueOf(pageSize));
+            UriComponents uriComponents = uriBuilder.build().encode();
+            ResponseEntity<Form3AccountsDto> response = restTemplate.getForEntity(uriComponents.toUri(), Form3AccountsDto.class);
+
+            List<AccountDto> accountDtos = response.getBody().getData().stream()
+                    .map(form3Account -> toDto(form3Account))
+                    .collect(Collectors.toList());
+
+            return AccountsPage.builder()
+                    .firstPage(toDtoPage(response.getBody().getLinks().getFirst(), Pagetype.FIRST, pageNumber, pageSize))
+                    .lastPage(toDtoPage(response.getBody().getLinks().getLast(), Pagetype.LAST, pageNumber, pageSize))
+                    .selfPage(toDtoPage(response.getBody().getLinks().getSelf(), Pagetype.SELF, pageNumber, pageSize))
+                    .previousPage(toDtoPage(response.getBody().getLinks().getPrev(), Pagetype.PREVIOUS, pageNumber, pageSize))
+                    .nextPage(toDtoPage(response.getBody().getLinks().getNext(), Pagetype.NEXT, pageNumber, pageSize))
+                    .accounts(accountDtos).build();
+
+        } catch (HttpClientErrorException e) {
+            throw new ThirdPartyHttpException(e.getStatusCode(), e.getMessage());
+        } catch (Exception e) {
             throw e;
         }
     }
@@ -53,16 +90,35 @@ public class Form3AccountsClient implements AccountsClient {
         HttpEntity<Form3AccountDto> request = new HttpEntity<>(getForm3Account(accountRequest), headers);
 
         try {
-            ResponseEntity<Form3AccountDto> response = restTemplate.postForEntity(form3Uri + V_1_ORGANISATION_ACCOUNTS,
+            ResponseEntity<Form3AccountDto> response = restTemplate.postForEntity(uriBuilder.build().toUri(),
                     request, Form3AccountDto.class);
             return toDto(response.getBody().getData());
 
         } catch (HttpClientErrorException e) {
             throw new ThirdPartyHttpException(e.getStatusCode(), e.getMessage());
-        }
-        catch (Exception e){
+        } catch (Exception e) {
             throw e;
         }
+    }
+
+    private String toDtoPage(String page, Pagetype pageType, int pageNumber, int pageSize) {
+        if (page != null) {
+            switch (pageType) {
+                case FIRST:
+                    return "/accounts?pageNumber=first&pageSize=" + pageSize;
+                case LAST:
+                    return "/accounts?pageNumber=last&pageSize=" + pageSize;
+                case SELF:
+                    return "/accounts?pageNumber=" + pageNumber + "&pageSize=" + pageSize;
+                case NEXT:
+                    int nextPage = pageNumber + 1;
+                    return "/accounts?pageNumber=" + nextPage + "&pageSize=" + pageSize;
+                case PREVIOUS:
+                    int previousPage = pageNumber - 1;
+                    return "/accounts?pageNumber=" + previousPage + "&pageSize=" + pageSize;
+            }
+        }
+        return null;
     }
 
     private AccountDto toDto(Form3Account data) {
@@ -85,7 +141,7 @@ public class Form3AccountsClient implements AccountsClient {
                 .type(accountRequest.getAccountType().toString().toLowerCase())
                 .attributes(Form3AccountAttributes.builder()
                         .country(attributes.getCountry().toString())
-                        .baseCurrency(attributes.getBaseCurrency() != null ? attributes.getBaseCurrency().toString() : null )
+                        .baseCurrency(attributes.getBaseCurrency() != null ? attributes.getBaseCurrency().toString() : null)
                         .accountNumber(attributes.getAccountNumber())
                         .bankId(attributes.getBankId())
                         .bankIdCode(attributes.getBankIdCode())

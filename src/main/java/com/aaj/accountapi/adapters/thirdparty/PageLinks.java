@@ -1,5 +1,6 @@
 package com.aaj.accountapi.adapters.thirdparty;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -8,13 +9,14 @@ import lombok.Setter;
 
 @Builder
 @NoArgsConstructor
+@AllArgsConstructor
 @Getter
 @Setter
 @EqualsAndHashCode
-public class Form3AccountDto {
-    private Form3Account data;
-
-    public Form3AccountDto(Form3Account data) {
-        this.data = data;
-    }
+public class PageLinks {
+    private String first;
+    private String last;
+    private String self;
+    private String prev;
+    private String next;
 }

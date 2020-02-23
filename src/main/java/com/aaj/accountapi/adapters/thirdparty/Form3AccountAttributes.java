@@ -2,12 +2,14 @@ package com.aaj.accountapi.adapters.thirdparty;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
 import java.util.Set;
 
 @Builder
 @Getter
+@EqualsAndHashCode
 public class Form3AccountAttributes {
      @JsonProperty("country")
      private String country;
