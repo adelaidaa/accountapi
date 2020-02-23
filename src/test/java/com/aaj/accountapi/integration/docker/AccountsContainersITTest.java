@@ -1,51 +1,30 @@
-package com.aaj.accountapi.integration;
+package com.aaj.accountapi.integration.docker;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
 import io.restassured.http.ContentType;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ContextConfiguration;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.UUID;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 
-
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@ContextConfiguration(initializers = {WireMockInitializer.class})
-public class AccountsControllerITTest {
-    @Autowired
-    private WireMockServer wireMockServer;
-
+@Testcontainers
+@ExtendWith(AccountApiDockerComposeExtension.class)
+public class AccountsContainersITTest {
     @LocalServerPort
     private Integer port;
-
-    private AccountThirdPartyAPIStubs accountThirdPartyAPIStubs;
-
-    @BeforeEach
-    public void setup() {
-        accountThirdPartyAPIStubs = new AccountThirdPartyAPIStubs(wireMockServer);
-    }
-
-    @AfterEach
-    public void afterEach() {
-        this.wireMockServer.resetAll();
-    }
 
     @Test
     public void testPostAccountReturnOk() throws Exception {
         String accountRequest = new String(Files.readAllBytes(Paths.get(getClass().getClassLoader().getResource("stubs/accounts/accountRequest.json").toURI())));
-        accountThirdPartyAPIStubs.stubForPostAccount();
 
         given()
                 .contentType(ContentType.JSON)
@@ -53,7 +32,7 @@ public class AccountsControllerITTest {
                 .when()
                 .post("http://localhost:" + port + "/accounts")
                 .then()
-                    .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
                     .body("id", equalTo("ae27e265-9605-4b4b-a0e5-3003ea9cc4dc"))
                     .body("country", equalTo("GB"))
                     .body("currency", equalTo("GBP"))
@@ -62,33 +41,19 @@ public class AccountsControllerITTest {
                     .body("iban", equalTo("GB11NWBK40030041426819"))
                     .body("accountName", equalTo("Samantha Holder"))
                 .assertThat()
-                    .statusCode(201);
+                .statusCode(201);
 
-    }
-
-    @Test
-    public void testPostAccountThirdPartyReturnException() throws Exception {
-        String accountRequest = new String(Files.readAllBytes(Paths.get(getClass().getClassLoader().getResource("stubs/accounts/accountRequest.json").toURI())));
-        accountThirdPartyAPIStubs.stubForPostAccountException();
-
-        given()
-                .contentType(ContentType.JSON)
-                .body(accountRequest)
-                .when()
-                .post("http://localhost:" + port + "/accounts")
-                .then()
-                    .body("message", equalTo("Third Party Exception"))
-                    .body("details", hasSize(1))
-                    .body("details", hasItem("400 Bad Request: [no body]"))
-                .assertThat()
-                    .statusCode(400);
+        deleteAccount("ae27e265-9605-4b4b-a0e5-3003ea9cc4dc");
     }
 
     @Test
     public void testGetAccountReturnOk() throws Exception {
-        String accountId = "ae27e265-9605-4b4b-a0e5-3003ea9cc4dc";
-        accountThirdPartyAPIStubs.stubForGetAccount(UUID.fromString(accountId));
+        String accountRequest = new String(Files.readAllBytes(Paths.get(getClass().getClassLoader().getResource("stubs/accounts/accountRequest.json").toURI())));
+        //Post account
+        postAccount(accountRequest);
 
+        //get account
+        String accountId = "ae27e265-9605-4b4b-a0e5-3003ea9cc4dc";
         given()
                 .when()
                 .get("http://localhost:" + port + "/accounts/" + accountId)
@@ -104,35 +69,39 @@ public class AccountsControllerITTest {
                 .assertThat()
                     .statusCode(200);
 
+        deleteAccount(accountId);
     }
 
     @Test
-    public void testGetAccountForNonExistingAccountThirdPartyReturnException() throws Exception {
-        String accountId = "af27e265-9605-4b4b-a0e5-3003ea9cc4dc";
-        accountThirdPartyAPIStubs.stubForGetAccountException(UUID.fromString(accountId));
+    public void testGetAccountReturnNotFound__when_account_not_existing() throws Exception {
 
+        //get account
+        String accountId = "ae27e265-9605-4b4b-a0e5-3003ea9cc4dc";
         given()
                 .when()
                 .get("http://localhost:" + port + "/accounts/" + accountId)
                 .then()
-                    .body("message", equalTo("Third Party Exception"))
-                    .body("details", hasSize(1))
-                    .body("details", hasItem("404 Not Found: [{\"error_message\":\"record af27e265-9605-4b4e-a0f5-3003ea9cc4dc does not exist\"}]"))
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .assertThat()
-                    .statusCode(404);
+                .statusCode(404);
     }
 
     @Test
     public void testGetAccountsReturnOk() throws Exception {
-        accountThirdPartyAPIStubs.stubForGetAccounts("1", "1");
-
+        //post 3 more accounts
+        String accountRequest = new String(Files.readAllBytes(Paths.get(getClass().getClassLoader().getResource("stubs/accounts/accountRequest.json").toURI())));
+        postAccount(accountRequest);
+        String accountRequest1 = new String(Files.readAllBytes(Paths.get(getClass().getClassLoader().getResource("stubs/accounts/accountRequest1.json").toURI())));
+        postAccount(accountRequest1);
+        String accountRequest2 = new String(Files.readAllBytes(Paths.get(getClass().getClassLoader().getResource("stubs/accounts/accountRequest2.json").toURI())));
+        postAccount(accountRequest2);
         given()
                 .when()
                 .get("http://localhost:" + port + "/accounts?pageNumber=1&pageSize=1")
                 .then()
-                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                    .contentType(MediaType.APPLICATION_JSON_VALUE)
                     .body("accounts", hasSize(1))
-                    .body("accounts[0].id", equalTo("ae27e265-9605-4b4b-a0e5-3003ea9cc4dc"))
+                    .body("accounts[0].id", equalTo("ae27f265-9605-4b4b-a0e5-3003ea9cc4dc"))
                     .body("accounts[0].country", equalTo("GB"))
                     .body("accounts[0].currency", equalTo("GBP"))
                     .body("accounts[0].accountNumber", equalTo("41426819" ))
@@ -147,19 +116,28 @@ public class AccountsControllerITTest {
                 .assertThat()
                     .statusCode(200);
 
+        deleteAccount("ae27e265-9605-4b4b-a0e5-3003ea9cc4dc");
+        deleteAccount("ae27f265-9605-4b4b-a0e5-3003ea9cc4dc");
+        deleteAccount("af27f265-9605-4b4b-a0e5-3003ea9cc4dc");
     }
 
-    @Test
-    public void testDeleteAccountReturnNocontent() throws Exception {
-        String accountId = "ae27e265-9605-4b4b-a0e5-3003ea9cc4dc";
-        accountThirdPartyAPIStubs.stubForDeleteAccount(UUID.fromString(accountId));
+    private void postAccount(String accountRequest) {
+        given()
+                .contentType(ContentType.JSON)
+                .body(accountRequest)
+                .when()
+                .post("http://localhost:" + port + "/accounts")
+         .then()
+                .assertThat()
+                .statusCode(201);
+    }
 
+    private void deleteAccount(String accountId) {
         given()
                 .when()
-                .delete("http://localhost:" + port + "/accounts/" + accountId + "?version=0")
+                .delete("http://localhost:" + port + "/accounts/" + accountId+ "?version=0")
                 .then()
                 .assertThat()
                 .statusCode(204);
     }
-
 }

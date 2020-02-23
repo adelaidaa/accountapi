@@ -2,6 +2,7 @@ package com.aaj.accountapi.integration;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 
 import java.nio.file.Files;
@@ -40,6 +41,12 @@ public class AccountThirdPartyAPIStubs {
                         .willReturn(aResponse()
                                 .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
                                 .withBody(accountResponse)));
+    }
+
+    public void stubForDeleteAccount(UUID accountId) throws Exception {
+        this.wireMockServer.stubFor(
+                WireMock.delete("/v1/organisation/accounts/"+ accountId + "?version=0")
+                        .willReturn(aResponse().withStatus(HttpStatus.NO_CONTENT.value())));
     }
 
     public void stubForGetAccounts(String pageNumber, String pageSize) throws Exception {

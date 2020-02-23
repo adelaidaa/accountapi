@@ -3,8 +3,7 @@ MAINTAINER Adelaida Alonso
 COPY pom.xml /build/
 COPY src /build/src/
 WORKDIR /build/
-RUN mvn test
-RUN mvn package
+RUN mvn package -DskipTests
 FROM openjdk:8-jre-alpine
 WORKDIR /app
 COPY --from=MAVEN_BUILD /build/target/accountapi-0.0.1-SNAPSHOT.jar /app/accountapi.jar

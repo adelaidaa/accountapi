@@ -8,4 +8,7 @@ public interface AccountsClient {
     AccountsPage findAccounts(int pageNumber, int pageSize);
 
     AccountDto accountReceived(AccountRequest accountRequest);
+
+    void deleteAccount(UUID id, int version);
+
 }

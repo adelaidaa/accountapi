@@ -7,6 +7,7 @@ import com.aaj.accountapi.core.ports.accounts.AccountsPage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,7 +18,6 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import javax.validation.Valid;
 import java.net.URI;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -53,5 +53,12 @@ public class AccountsController {
         AccountsPage accountsPage = accountsClient.findAccounts(pageNumber, pageSize);
 
         return ResponseEntity.ok(accountsPage);
+    }
+
+    @DeleteMapping(path = "/accounts/{accountId}")
+    public ResponseEntity<Object> deleteAccount(@PathVariable(value="accountId") UUID accountId, @RequestParam int version) {
+        accountsClient.deleteAccount(accountId, version);
+
+        return ResponseEntity.noContent().build();
     }
 }

@@ -44,7 +44,7 @@ public class Form3AccountsClient implements AccountsClient {
     @Override
     public AccountDto findById(UUID id) throws ResourceNotFoundException {
         try {
-            UriComponents uriComponents = uriBuilder.path("/{accountId}").buildAndExpand(id);
+            UriComponents uriComponents = uriBuilder.cloneBuilder().path("/{accountId}").buildAndExpand(id);
             ResponseEntity<Form3AccountDto> response = restTemplate.getForEntity(uriComponents.toUri(), Form3AccountDto.class);
             return toDto(response.getBody().getData());
 
@@ -58,10 +58,10 @@ public class Form3AccountsClient implements AccountsClient {
     @Override
     public AccountsPage findAccounts(int pageNumber, int pageSize) {
         try {
-            uriBuilder
+            UriComponents uriComponents = uriBuilder.cloneBuilder()
                     .queryParam("page[number]", String.valueOf(pageNumber))
-                    .queryParam("page[size]", String.valueOf(pageSize));
-            UriComponents uriComponents = uriBuilder.build().encode();
+                    .queryParam("page[size]", String.valueOf(pageSize))
+            .build().encode();
             ResponseEntity<Form3AccountsDto> response = restTemplate.getForEntity(uriComponents.toUri(), Form3AccountsDto.class);
 
             List<AccountDto> accountDtos = response.getBody().getData().stream()
@@ -90,10 +90,25 @@ public class Form3AccountsClient implements AccountsClient {
         HttpEntity<Form3AccountDto> request = new HttpEntity<>(getForm3Account(accountRequest), headers);
 
         try {
-            ResponseEntity<Form3AccountDto> response = restTemplate.postForEntity(uriBuilder.build().toUri(),
+            ResponseEntity<Form3AccountDto> response = restTemplate.postForEntity(uriBuilder.cloneBuilder().build().toUri(),
                     request, Form3AccountDto.class);
             return toDto(response.getBody().getData());
 
+        } catch (HttpClientErrorException e) {
+            throw new ThirdPartyHttpException(e.getStatusCode(), e.getMessage());
+        } catch (Exception e) {
+            throw e;
+        }
+    }
+
+    @Override
+    public void deleteAccount(UUID id, int version) {
+        try {
+            UriComponents uriComponents = uriBuilder.cloneBuilder()
+                    .path("/{accountId}")
+                    .queryParam("version", String.valueOf(version))
+                    .buildAndExpand(id);
+            restTemplate.delete(uriComponents.toUri());
         } catch (HttpClientErrorException e) {
             throw new ThirdPartyHttpException(e.getStatusCode(), e.getMessage());
         } catch (Exception e) {
