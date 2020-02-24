@@ -30,6 +30,16 @@ The `spring-boot-accountapi` has been dockerized and added to the `docker-compos
 and to be able to do any manual tests that want to be performed. Tests have been skipped when building the docker image
 for the spring-boot service `-DskipTests` and the only way to run all tests is via maven or the IDE.
 
+Swagger has been added to document the API and can be accessed locally on:
+`http://localhost:8081/swagger-ui.html`
+
+The code has been structured using the ports and adapters - hexagonal architecture:
+`https://softwarecampament.wordpress.com/portsadapters/`
+
+In oder to allow for new adapters in the future to interact with the accounts API, 
+right now the only adapter is the service Rest API to create, list and delete Accounts
+but we potentially add other adapters like an async consumer of accounts from a topic. 
+ 
 ## Copyright
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
