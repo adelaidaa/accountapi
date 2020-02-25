@@ -39,6 +39,11 @@ The code has been structured using the ports and adapters - hexagonal architectu
 In oder to allow for new adapters in the future to interact with the accounts API, 
 right now the only adapter is the service Rest API to create, list and delete Accounts
 but we potentially add other adapters like an async consumer of accounts from a topic. 
+
+In any case I would have love to spend more time productionising my spring-boot service, adding a pipeline, 
+CDC testing , metrics and monitoring, and also configure a circuit Breaker using Hystrix on the Accounts API
+client in order to not take down the accountapi service provided 
+but I think at this stage it was out of the scope of the exercise. 
  
 ## Copyright
 
