@@ -18,7 +18,7 @@
 		<java.version>1.8</java.version>
 		<wiremock.version>2.26.0</wiremock.version>
 		<rest-assured.version>4.2.0</rest-assured.version>
-		<springfox-swagger2.version>2.9.2</springfox-swagger2.version>
+		<springfox-swagger2.version>2.10.0</springfox-swagger2.version>
 		<testcontainers.version>1.12.5</testcontainers.version>
 	</properties>
 
